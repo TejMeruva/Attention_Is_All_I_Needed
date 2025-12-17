@@ -9,3 +9,5 @@
 - made a note in `Notability`
 - wrote comments frequently to keep track of what's going on.
 - learnt what `droupout` is
+- wrote the `transformerAttention` class and learnt about attention.
+- 
