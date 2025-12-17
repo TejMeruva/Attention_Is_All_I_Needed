@@ -12,4 +12,13 @@
 - wrote the `transformerAttention` class and learnt about attention.
 - finished writing the FeedForward Network, assumed that different ffn is used for different position, turns out not so.
 - Finished the `Encoder` module.
--  
+- Finished the `Decoder` module.
+- Learnt what a `causal mask`  is.
+- finished combining the encoder and decoder (did by mylsef)
+- finished the `full transformer`!
+- i am not satisfied--i need to train it right now
+- i google how to train a transformer to be a chatbot
+- apparently you don't even need the encoder stack.
+- i will have to make a new file altogether.
+- 24M parameters: crazy
+- learnt why `right shifting` is needed.
