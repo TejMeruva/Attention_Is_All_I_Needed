@@ -10,4 +10,6 @@
 - wrote comments frequently to keep track of what's going on.
 - learnt what `droupout` is
 - wrote the `transformerAttention` class and learnt about attention.
-- finished writing the FeedForward Network, assumed that different ffn is used for different position, turns out not so. 
+- finished writing the FeedForward Network, assumed that different ffn is used for different position, turns out not so.
+- Finished the `Encoder` module.
+-  
