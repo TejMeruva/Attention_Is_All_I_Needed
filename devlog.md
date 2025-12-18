@@ -22,3 +22,10 @@
 - i will have to make a new file altogether.
 - 24M parameters: crazy
 - learnt why `right shifting` is needed.
+
+**18 Decemeber 2025**
+- tried the Colab TPU 
+- couldn't use the local transformer module
+- copy pasted the code instead
+- learnt about `tokenizer` from `transformers`.
+- the fuck is an `attention mask`?
