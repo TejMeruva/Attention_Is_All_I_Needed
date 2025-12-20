@@ -29,3 +29,9 @@
 - copy pasted the code instead
 - learnt about `tokenizer` from `transformers`.
 - the fuck is an `attention mask`?
+
+**20 December 2025**
+- welp Imma do it again--to learn it better. This time i am not gonna take help.
+- i used Notability to keep track of the tensor shapes. 
+- i kwpt using a terminal, using pyton in interactive mode to see what outputs tensor operation were giving me.
+- finished `Embedder`
