@@ -1,6 +1,7 @@
 import torch 
 from torch import nn
 from math import log, sqrt
+import torch.nn.functional as F
 
 class Embedder(nn.Module):
     '''
@@ -49,7 +50,7 @@ class Embedder(nn.Module):
 
         pos = torch.arange(0, seq_length, device=device).float() \
         .unsqueeze(1) 
-        
+
         pe = torch.zeros(
             size=(seq_length, d_model),
             device=device
@@ -65,7 +66,112 @@ class Embedder(nn.Module):
         x_emb = self.embedding(x)
         x_proj = self.proj(x_emb) * self.scaling_factor
         enc = self.get_pos_encoding(x_proj, self.d_model, device=self.device)
-        x = self.norm(x+enc)
+        x = x + enc
         x = self.dropout(x)
+        x = self.norm(x)
         return x
     
+class FeedForwardNetwork(nn.Module):
+    def __init__(
+                self,
+                d_model: int,
+                d_ff: int,
+                device = 'cpu'
+                ):
+    
+        super().__init__()
+    
+        self.d_model = d_model
+        self.d_ff = d_ff
+        self.device = device 
+        
+        self.layer_stack = nn.Sequential(
+            nn.Linear(
+                in_features=self.d_model,
+                out_features=self.d_ff,
+                device=self.device
+            ),
+
+            nn.ReLU(),
+
+            nn.Linear(
+                in_features=self.d_ff,
+                out_features=self.d_model,
+                device=self.device
+            )
+        )
+    
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        return self.layer_stack(x)
+    
+class Attention(nn.Module):
+    def __init__(
+            self,
+            d_model: int,
+            num_head: int,
+            device= 'cpu'
+            ):
+
+        super().__init__()
+
+        self.d_model = d_model
+        self.device = device
+        self.num_head = num_head
+        self.d_head = d_model // num_head
+
+        self.q_proj = nn.Linear(
+            in_features=d_model,
+            out_features=d_model, 
+            device= self.device
+        )
+
+        self.k_proj = nn.Linear(
+            in_features=d_model,
+            out_features=d_model, 
+            device= self.device
+        )
+
+        self.v_proj = nn.Linear(
+            in_features=d_model,
+            out_features=d_model, 
+            device= self.device
+        )
+
+        self.scaling_factor = float(1.0 / sqrt(self.d_head))
+    
+    def forward(self, 
+                x: torch.Tensor,
+                key_value_states: torch.Tensor = None,
+                att_mask: torch.Tensor = None
+                ) -> torch.Tensor:
+        
+        batch_size, seq_length, d_model = x.size()
+
+        Q_state = self.q_proj(x)
+        
+        
+        is_cross_attention = key_value_states is not None
+
+        if is_cross_attention:
+            kv_len = key_value_states.size(1)
+            K_state = self.k_proj(key_value_states)
+            V_state = self.v_proj(key_value_states)
+        else:
+            kv_len = x.size(1)
+            K_state = self.k_proj(x)
+            V_state = self.v_proj(x)
+
+        Q_state = Q_state.view(batch_size, seq_length, self.num_head, self.d_head).transpose(1, 2) #divides the tensor for each head
+        K_state = K_state.view(batch_size, kv_len, self.num_head, self.d_head).transpose(1, 2)
+        V_state = V_state.view(batch_size, kv_len, self.num_head, self.d_head).transpose(1, 2)
+        
+        op = torch.matmul(Q_state, K_state.transpose(-1, -2)) * self.scaling_factor
+        
+        if att_mask is not None:
+            op = op + att_mask
+
+        op = F.softmax(op, dim=-1)
+        op = torch.matmul(op, V_state)
+
+        return op
+
