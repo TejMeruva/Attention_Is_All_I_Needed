@@ -138,6 +138,12 @@ class Attention(nn.Module):
         )
 
         self.scaling_factor = float(1.0 / sqrt(self.d_head))
+
+        self.output_proj = nn.Linear(
+            in_features=self.d_model, 
+            out_features=self.d_model,
+            device=self.device
+        )
     
     def forward(self, 
                 x: torch.Tensor,
@@ -172,6 +178,201 @@ class Attention(nn.Module):
 
         op = F.softmax(op, dim=-1)
         op = torch.matmul(op, V_state)
+        # print(op)
+
+        #concat
+        op = op.view(batch_size, d_model, seq_length).transpose(-1, -2)
+
+        #linear 
+        op = self.output_proj(op)
 
         return op
+    
+class TransformerEncoder(nn.Module):
+    def __init__(
+            self,
+            d_model: int, 
+            num_head: int,
+            d_ff: int, 
+            device = 'cpu',
+            dropout = 0.1
+            ):
+        
+        super().__init__()
+
+        self.d_model = d_model
+        self.num_head = num_head
+        self.d_ff = d_ff
+        self.device = device
+        self.dropout = dropout
+
+        self.att = Attention(
+            d_model=self.d_model, 
+            num_head=self.num_head, 
+            device=self.device
+        )
+
+        self.dropout = nn.Dropout(self.dropout)
+
+        self.norm1 = nn.LayerNorm(
+            normalized_shape=self.d_model, 
+            device=self.device
+        )
+
+        self.ffn = FeedForwardNetwork(
+            d_model=self.d_model, 
+            d_ff=self.d_ff, 
+            device=self.device
+        )
+
+        self.norm2 = nn.LayerNorm(
+            normalized_shape=self.d_model, 
+            device=self.device
+        )
+
+    def forward(
+            self,
+            x:torch.Tensor,
+            padding_mask: torch.Tensor = None
+            ):
+        
+        x_att = self.att.forward(x, att_mask=padding_mask)
+
+        x_att = self.dropout(x_att)
+        x_norm1 = self.norm1(x_att + x)
+
+        x_ffn = self.ffn(x_norm1)
+
+        x_ffn = self.dropout(x_ffn)
+        x_norm2 = self.norm2(x_ffn + x_norm1)
+
+        return(x_norm2)
+    
+class TransformerDecoder(nn.Module):
+    def __init__(
+            self,
+            d_model: int, 
+            num_head: int,
+            d_ff: int,
+            device = 'cpu',
+            dropout = 0.1
+            ):
+
+        super().__init__()
+
+        self.d_model = d_model
+        self.num_head = num_head
+        self.d_ff = d_ff
+        self.device = device
+        self.dropout = dropout
+
+        self.att1 = Attention(
+            d_model = self.d_model, 
+            num_head= self.num_head, 
+            device= self.device
+        )
+
+        self.dropout = nn.Dropout(self.dropout)
+
+        self.norm1 = nn.LayerNorm(
+            normalized_shape=self.d_model, 
+            device=self.device
+        )
+
+        self.att2 = Attention(
+            d_model = self.d_model, 
+            num_head= self.num_head, 
+            device= self.device
+        )
+
+        self.norm2 = nn.LayerNorm(
+            normalized_shape=self.d_model, 
+            device=self.device
+        )
+
+        self.ffn = FeedForwardNetwork(
+            d_model=self.d_model, 
+            d_ff=self.d_ff, 
+            device=self.device
+        )
+
+        self.norm3 = nn.LayerNorm(
+            normalized_shape=self.d_model, 
+            device=self.device
+        )
+
+    @staticmethod
+    def create_causal_mask(d_model: int, seq_len: int, batch_size: int, device='cpu'):
+        zer = torch.full(
+            size=(seq_len, d_model),
+            fill_value=float('-inf')
+        )
+        tri = torch.triu(zer, diagonal=1).unsqueeze(0).expand(batch_size, -1, -1)
+        return tri.to(device)
+
+    def forward(
+            self, 
+            x: torch.Tensor,
+            padding_mask:torch.Tensor = None,
+            cross_input: torch.Tensor = None
+            ):
+        
+        batch_size, seq_len, d_model = x.size()
+        
+        causal_mask = self.create_causal_mask(
+            d_model=self.d_model, 
+            seq_len=seq_len, 
+            batch_size=batch_size,
+            device=self.device
+        )
+
+        x_att1 = self.att1(
+            x=x, 
+            att_mask=causal_mask
+        )
+
+        x_att1 = self.dropout(x_att1)
+        x_norm1 = self.norm1(x_att1 + x)
+
+        if cross_input is not None:
+            x_att2 = self.att2(
+                x=x_norm1, 
+                key_value_states=cross_input, 
+                att_mask=padding_mask
+            )
+        else: 
+            x_att2 = self.att2(
+                x=x_norm1,
+                att_mask=padding_mask
+            )
+
+        x_att2 = self.dropout(x_att2)
+        x_norm2 = self.norm2(x_att2 +  x_norm1)
+
+        x_ffn = self.ffn(x_norm2)
+
+        x_ffn = self.dropout(x_ffn)
+        x_norm3 = self.norm3(x_ffn + x_norm2)
+
+        return x_norm3
+
+class Transformer(nn.Module):
+    def __init__(
+            self,
+            d_model: int, 
+            num_head: int,
+            d_ff: int,
+            device = 'cpu',
+            dropout = 0.1
+            ):
+
+        super().__init__()
+
+        self.d_model = d_model
+        self.num_head = num_head
+        self.d_ff = d_ff
+        self.device = device
+        self.dropout = dropout
+    
+
 

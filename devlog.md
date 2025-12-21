@@ -35,3 +35,8 @@
 - i used Notability to keep track of the tensor shapes. 
 - i kwpt using a terminal, using pyton in interactive mode to see what outputs tensor operation were giving me.
 - finished `Embedder`
+
+**21 December 2025**
+- finished the Transformer `Attention` and `Encoder`.
+- realized that taking a break made it so easy that I was able to write the attention class all by myself.
+- finished `Decoder`
