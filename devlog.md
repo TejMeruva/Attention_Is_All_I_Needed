@@ -40,3 +40,24 @@
 - finished the Transformer `Attention` and `Encoder`.
 - realized that taking a break made it so easy that I was able to write the attention class all by myself.
 - finished `Decoder`
+
+**22 December 2025**
+- discovered [Andrej Karpathy](https://www.youtube.com/watch?v=l8pRSuU81PU)
+- discovered [GPT-2 Architecture](https://medium.com/@hsinhungw/gpt-2-detailed-model-architecture-6b1aad33d16b)
+
+**23 December 2025**
+- almost gave up--thinking that i won't be able to train it. 
+- got convinced to follow the video by Andrej Karpathy.
+- got the video idea:
+  ```
+  I finished PyTorch Basics
+  ...
+  Let's build a transformer.
+  ...
+  I learnt about the transformer
+  ...
+  Let's build GPT.
+  ```
+- watched AK video till 59:00 and decided to write out GPT-2.
+- implementing the GPT-2 model myself.
+  - learnt how unlike th eoriginal transformer, in GPT-2, even the positional encoding is embedding that is learnt.

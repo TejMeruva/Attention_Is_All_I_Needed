@@ -2,4 +2,6 @@ torch
 numpy 
 matplotlib
 seaborn
+tiktoken
 ipykernel
+transformers
