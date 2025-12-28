@@ -16,13 +16,52 @@ class GPTConfig:
     block_size: int = 1024
     dropout: float = 0.1
     n_layer: float = 12
+    bias: bool = True
+
+class GPT2Attention(nn.Module):
+    def __init__(self, config: GPTConfig):
+        super().__init__()
+
+    def forward(self, x: torch.Tensor):
+        pass
+
+class GPT2MLP(nn.Module):
+    def __init__(self, config: GPTConfig):
+        super().__init__()
+        self.c_fc = nn.Linear(
+            in_features=config.d_embed,
+            out_features= config.d_embed * 4,
+            bias=config.bias
+        )
+        self.act = nn.GELU()
+        self.c_proj = nn.Linear(
+            in_features=config.d_embed * 4,
+            out_features= config.d_embed,
+            bias=config.bias
+        )
+        self.dropout = nn.Dropout(p = config.dropout)
+
+
+    def forward(self, x: torch.Tensor):
+        x = self.act(self.c_fc(x))
+        x = self.c_proj(x)
+        x = self.dropout(x)
+        return x
+
 
 class GPT2Block(nn.Module):
-    def __init__(self):
+    def __init__(self, config: GPTConfig):
         super().__init__()
-    
-    def forward(self):
-        pass
+        self.ln_1 = nn.LayerNorm(config.d_embed)
+        self.attn = GPT2Attention(config)
+        self.ln_2 = nn.LayerNorm(config.d_embed)
+        self.mlp = GPT2MLP(config)        
+
+    def forward(self, x: torch.Tensor):
+        x = x + self.attn(self.ln_1(x))
+        x = x + self.mlp(self.ln_2(x))
+        return x
+        
 
 class GPT(nn.Module):
     def __init__(self, config : GPTConfig):
@@ -44,7 +83,7 @@ class GPT(nn.Module):
 
         drop = nn.Dropout(p = config.dropout),
 
-        h = nn.ModuleList([GPT2Block() for _ in range(config.n_layer)]),
+        h = nn.ModuleList([GPT2Block(config) for _ in range(config.n_layer)]),
         ln_f = nn.LayerNorm(normalized_shape=config.d_embed)
         ))
         self.lm_head = nn.Linear(in_features=config.d_embed, out_features=config.vocab_size, bias=False)
@@ -63,7 +102,7 @@ class GPT(nn.Module):
         x = self.transformer.drop(pe + te)
 
         for block in self.transformer.h:
-            x = block()
+            x = block(x)
 
         x = self.transformer.ln_f(x)
         x = self.transformerlm_head(x)

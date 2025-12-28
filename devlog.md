@@ -61,3 +61,6 @@
 - watched AK video till 59:00 and decided to write out GPT-2.
 - implementing the GPT-2 model myself.
   - learnt how unlike th eoriginal transformer, in GPT-2, even the positional encoding is embedding that is learnt.
+  - learnt about dataclasses (insane)
+  - better than writing down all the arguments millions of times.
+  - using the structure of `GPT2LMHeadModel` from HuggingFace.
