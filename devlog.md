@@ -64,3 +64,12 @@
   - learnt about dataclasses (insane)
   - better than writing down all the arguments millions of times.
   - using the structure of `GPT2LMHeadModel` from HuggingFace.
+  - finished entrie GPT2-small (124M). only training left. 
+  - initially got 163M params instead of 124M 
+  - was because of one line: 
+    - self.transformer.wte.weight = self.lm_head.weight
+  - then got really close
+    - mine: 124439808 
+    - his: 124475904
+  - GPTed it 
+  - found difference in vocab size. 

@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 import torch
 from torch import nn
+import torch.nn.functional as F
+import math
 
 
 # learnt from AK's video that taking a top-down approach is smarted here.
@@ -11,19 +13,72 @@ from torch import nn
 
 @dataclass
 class GPTConfig:
-    vocab_size: int = 50257 # 50,000 BPE + 256 + 1 
+    vocab_size: int = 50304 # 50,000 BPE + 256 + 1 
     d_embed: int = 768
     block_size: int = 1024
     dropout: float = 0.1
     n_layer: float = 12
     bias: bool = True
+    n_head: int = 12
 
 class GPT2Attention(nn.Module):
     def __init__(self, config: GPTConfig):
         super().__init__()
 
+        self.config = config
+
+        self.c_attn = nn.Linear(
+            in_features=config.d_embed, 
+            out_features=config.d_embed * 3,
+            bias = config.bias
+        )
+
+        self.c_proj = nn.Linear(
+            in_features=config.d_embed, 
+            out_features=config.d_embed,
+            bias = config.bias
+        )
+
+        self.attn_dropout = nn.Dropout(config.dropout)
+        self.resid_dropout = nn.Dropout(config.dropout)
+
+    @staticmethod
+    def causal_mask(d_embed: int, seq_len: int, batch_size: int):
+        op = torch.full(
+            size=(seq_len, d_embed),
+            fill_value=float('-inf')
+        )
+
+        op = torch.triu(op, diagonal=1)
+        return op.unsqueeze(0).expand(batch_size, -1, -1)
+
+
     def forward(self, x: torch.Tensor):
-        pass
+        b, l, d = x.size()
+
+        # splitting into q, k, v
+        q, k, v = self.c_attn(x.float()).split(self.config.d_embed, 2)
+
+        # splitting into heads
+        q = q.view(b, l, self.config.n_head, d // self.config.n_head).transpose(1, 2)
+        k = k.view(b, l, self.config.n_head, d // self.config.n_head).transpose(1, 2)
+        v = v.view(b, l, self.config.n_head, d // self.config.n_head).transpose(1, 2)
+
+        att = (q @ k.transpose(-1, -2)) * (1/math.sqrt(k.size(-1)))
+        causal_mask = self.causal_mask(att.size(1), att.size(2), att.size(0))
+        # print(att.shape)
+        # att += causal_mask
+        att = F.softmax(att, dim=-1)
+        
+        att = self.attn_dropout(att)
+        att = att @ v
+
+        att = att.transpose(1, 3).contiguous().view(b, l, d)
+        att = self.resid_dropout(self.c_proj(att))
+        return att
+
+
+
 
 class GPT2MLP(nn.Module):
     def __init__(self, config: GPTConfig):
@@ -63,7 +118,7 @@ class GPT2Block(nn.Module):
         return x
         
 
-class GPT(nn.Module):
+class GPT2(nn.Module):
     def __init__(self, config : GPTConfig):
         super().__init__()
 
@@ -87,6 +142,7 @@ class GPT(nn.Module):
         ln_f = nn.LayerNorm(normalized_shape=config.d_embed)
         ))
         self.lm_head = nn.Linear(in_features=config.d_embed, out_features=config.vocab_size, bias=False)
+        self.transformer.wte.weight = self.lm_head.weight
 
     
     def forward(self, idx: torch.Tensor) -> torch.Tensor:
