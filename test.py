@@ -22,14 +22,17 @@ def causal_mask(d_embed: int, seq_len: int, batch_size: int):
     return op.unsqueeze(0).expand(batch_size, -1, -1)
 # print(att())
 
-model = GPT2(defConfig)
-akModel = GPT(gc())
+model = GPT2(defConfig).to('mps')
+akModel = GPT(gc(n_head=2, n_embd=4)).to('mps')
 
 s1 = 0
 for param in model.parameters():
     s1 += param.numel()
 
-s2 = 0
-for param in akModel.parameters():
-    s2 += param.numel()
-print(s1 == s2, s1, s2)
+# s2 = 0
+# for param in akModel.parameters():
+#     s2 += param.numel()
+
+a = torch.tensor([1, 2, 3], dtype=torch.long, device='mps').unsqueeze(0).expand(3, -1)
+# print(model(a))
+# print(akModel(a))
