@@ -16,7 +16,7 @@ class GPTConfig:
     vocab_size: int = 50257 # 50,000 BPE + 256 + 1 
     d_embed: int = 768
     block_size: int = 1024
-    dropout: float = 0.1
+    dropout: float = 0.0
     n_layer: float = 12
     bias: bool = True
     n_head: int = 12
@@ -41,17 +41,18 @@ class GPT2Attention(nn.Module):
 
         self.attn_dropout = nn.Dropout(config.dropout)
         self.resid_dropout = nn.Dropout(config.dropout)
+        self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size))
+                                        .view(1, 1, config.block_size, config.block_size))
 
     @staticmethod
-    def causal_mask(d_embed: int, seq_len: int, batch_size: int):
+    def causal_mask(*size):
         op = torch.full(
-            size=(seq_len, d_embed),
+            size=(size[1], size[2]),
             fill_value=float('-inf')
         )
 
         op = torch.triu(op, diagonal=1)
-        return op.unsqueeze(0).expand(batch_size, -1, -1)
-
+        return op.unsqueeze(0).expand(size[0], -1, -1)
 
     def forward(self, x: torch.Tensor):
         b, l, d = x.size()
@@ -65,15 +66,17 @@ class GPT2Attention(nn.Module):
         v = v.view(b, l, self.config.n_head, d // self.config.n_head).transpose(1, 2)
 
         att = (q @ k.transpose(-1, -2)) * (1/math.sqrt(k.size(-1)))
-        causal_mask = self.causal_mask(att.size(1), att.size(2), att.size(0))
+        # print(att.size())
+        # causal_mask = self.causal_mask(a, b, c)
         # print(att.shape)
         # att += causal_mask
+        att = att.masked_fill(self.bias[:,:,:l,:l] == 0, float('-inf'))
         att = F.softmax(att, dim=-1)
         
         att = self.attn_dropout(att)
         att = att @ v
 
-        att = att.transpose(1, 3).contiguous().view(b, l, d)
+        att = att.transpose(1, 2).contiguous().view(b, l, d)
         att = self.resid_dropout(self.c_proj(att))
         return att
 
@@ -104,12 +107,14 @@ class GPT2MLP(nn.Module):
 class GPT2Block(nn.Module):
     def __init__(self, config: GPTConfig):
         super().__init__()
+        self.config = config
         self.ln_1 = nn.LayerNorm(config.d_embed)
         self.attn = GPT2Attention(config)
         self.ln_2 = nn.LayerNorm(config.d_embed)
-        self.mlp = GPT2MLP(config)        
+        self.mlp = GPT2MLP(config)       
 
     def forward(self, x: torch.Tensor):
+        B, T, C = x.size()
         x = x + self.attn(self.ln_1(x))
         x = x + self.mlp(self.ln_2(x))
         return x

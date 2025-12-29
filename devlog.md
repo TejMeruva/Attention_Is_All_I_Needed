@@ -75,4 +75,8 @@
   - found difference in vocab size.
 
 **29 Decemeber 2025**
--  
+-  corrected the GPT model a bit 
+-  loded the weights 
+-  output was gibberish comapred to AK
+-  gpted more and more.
+-  found that one number. one number in the GPT2Attention module was 3 instead of 2. (in the concatenation of the heads.)

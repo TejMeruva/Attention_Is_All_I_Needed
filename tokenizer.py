@@ -12,6 +12,7 @@ model = GPT2.from_pretrained('gpt2')
 
 tokenizer = tiktoken.get_encoding('gpt2')
 op = torch.tensor(tokenizer.encode('My name is'), device='mps')
+# op = torch.tensor(tokenizer.encode('My name is'), device='mps').unsqueeze(0)
 
 print(tokenizer.decode(model.generate(op, 30)))
 
