@@ -88,3 +88,7 @@
 - tried using gpt2-xl (fucking 6.43GB)
 - tried gpt2-medium instead.
 - now I have to train the model from scratch instead of using the pre-trained weights.
+- followed AK's video chapter by chapter. Trying to learn and do everything by myself.
+- trained using mini shakespeare 
+- got loss of 6.34
+- still blurts garbage, better than untrained though.

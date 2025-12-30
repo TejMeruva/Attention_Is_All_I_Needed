@@ -35,16 +35,17 @@ class GPT2Attention(nn.Module):
         self.resid_dropout = nn.Dropout(config.dropout)
         self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size))
                                         .view(1, 1, config.block_size, config.block_size))
+        
+        self.apply(self._init_weights) # will be applied to every sub module.
+        
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0, std=0.02) # according to GPT2 paper.
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0, std=0.02) # according to GPT2 paper.
 
-    @staticmethod
-    def causal_mask(*size):
-        op = torch.full(
-            size=(size[1], size[2]),
-            fill_value=float('-inf')
-        )
-
-        op = torch.triu(op, diagonal=1)
-        return op.unsqueeze(0).expand(size[0], -1, -1)
 
     def forward(self, x: torch.Tensor):
         b, l, d = x.size()
@@ -158,8 +159,8 @@ class GPT2(nn.Module):
         x = self.transformer.ln_f(x)
 
         if targets is not None:
-            logits = self.lm_head(x)
-            # to be continued.
+            logits = self.lm_head(x) # (B, T, vocab_size)
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.contiguous().view(-1))
         else:
             logits = self.lm_head(x[:, [-1], :])
             loss = None
