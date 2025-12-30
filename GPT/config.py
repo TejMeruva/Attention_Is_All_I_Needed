@@ -16,25 +16,19 @@ gpt2Config = GPTConfig(
     device = 'mps' if torch.backends.mps.is_available() else 'cpu'
 )
 
-gpt2Medium = GPTConfig(
+gpt2MediumConfig = GPTConfig(
     n_layer=24, 
     n_head=16, 
     d_embed=1024
 )
 
-gpt2Large = GPTConfig(
+gpt2LargeConfig = GPTConfig(
     n_layer=36, 
     n_head=20, 
     d_embed=1280
 )
 
-gpt2Medium = GPTConfig(
-    n_layer=24, 
-    n_head=16, 
-    d_embed=1024
-)
-
-gpt2Xl = GPTConfig(
+gpt2XlConfig = GPTConfig(
     n_layer=48, 
     n_head=25, 
     d_embed=1600

@@ -139,7 +139,7 @@ class GPT2(nn.Module):
         self.transformer.wte.weight = self.lm_head.weight
 
 
-    def forward(self, idx: torch.Tensor) -> torch.Tensor:
+    def forward(self, idx: torch.Tensor, targets=None) -> torch.Tensor:
         b, t = idx.size()
         dev = idx.device
         self.to(dev)
@@ -156,8 +156,15 @@ class GPT2(nn.Module):
             x = block(x)
 
         x = self.transformer.ln_f(x)
-        x = self.lm_head(x[:, [-1], :])
-        return x
+
+        if targets is not None:
+            logits = self.lm_head(x)
+            # to be continued.
+        else:
+            logits = self.lm_head(x[:, [-1], :])
+            loss = None
+
+        return logits, loss
     
     @classmethod
     def from_pretrained(self, modelName: str):
@@ -166,11 +173,11 @@ class GPT2(nn.Module):
             case 'gpt2':
                 model = GPT2(gpt2Config)
             case 'gpt2-medium':
-                model = GPT2(gpt2Medium)
+                model = GPT2(gpt2MediumConfig)
             case 'gpt2-large':
-                model = GPT2(gpt2Large)
+                model = GPT2(gpt2LargeConfig)
             case 'gpt2-xl':
-                model = GPT2(gpt2Xl)
+                model = GPT2(gpt2XlConfig)
             case _:
                 raise Exception(f'requested pre-trained model {modelName} not available.')
         
@@ -205,7 +212,7 @@ class GPT2(nn.Module):
         if progress_bar:
             wrapper = tqdm
         for _ in wrapper(range(max_tokens)):
-            logits = self(idx.unsqueeze(0))
+            logits, _ = self(idx.unsqueeze(0))
             probs = F.softmax(logits, dim=-1).squeeze()
             # print(probs)
             idx_next = torch.multinomial(probs, 1)
