@@ -207,7 +207,7 @@ class GPT2(nn.Module):
         s -= self.transformer.wpe.weight.numel()
         return s
     
-    @torch.no_grad()
+    @torch.inference_mode()
     def generate(self, idx: list, max_tokens: int = 30, k: int = 50, progress_bar = False):
         wrapper = lambda x: x
         if progress_bar:
