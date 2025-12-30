@@ -92,3 +92,12 @@
 - trained using mini shakespeare 
 - got loss of 6.34
 - still blurts garbage, better than untrained though.
+- learnt about TF32.
+-  learnt about tflops and how the mps comapres to cuda.
+- using mps, FP32: ~4-5s per batch
+- using mps, TF32, ~3s per batch
+- learnt about bfloat implementaion using torch.autocast.
+- using bfloat got ~4s per epoch.
+- i got insanely higher tokens per second (+300) by reducing, number of tokens in each batch. (1024 -> 256)
+- found sweet spot at 512 tokens in each idx with 8 idx's.
+- using torch.compile

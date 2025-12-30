@@ -17,7 +17,10 @@ class TextFile:
 
         with open(file_path, 'r') as file:
             text = file.read()
-            tokens = torch.tensor(self.tokenizer.encode(text), device=device)
+            tokens = torch.tensor(
+                self.tokenizer.encode(text), 
+                device=device, 
+                dtype=torch.long)
 
         if max_tokens is not None:
             tokens = tokens[:max_tokens]
