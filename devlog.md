@@ -80,3 +80,11 @@
 -  output was gibberish comapred to AK
 -  gpted more and more.
 -  found that one number. one number in the GPT2Attention module was 3 instead of 2. (in the concatenation of the heads.)
+-  
+
+**30 December 2025**
+- rewrote `from_pretrained()` myself.
+- made a CLI.
+- tried using gpt2-xl (fucking 6.43GB)
+- tried gpt2-medium instead.
+- now I have to train the model from scratch instead of using the pre-trained weights.

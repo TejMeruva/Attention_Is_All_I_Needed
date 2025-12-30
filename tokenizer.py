@@ -1,5 +1,5 @@
 import tiktoken
-from GPT2 import GPT2, GPTConfig
+from GPT.model import GPT2, GPTConfig
 from AKGPT import GPT
 from random import choice, seed
 import torch

@@ -1,60 +1,28 @@
-from transformer import Embedder, FeedForwardNetwork, Attention, TransformerEncoder, TransformerDecoder
-import torch 
+from GPT.model import GPT2
+from prettyPrint import centerPrint, divPrint
+import torch
+import tiktoken
 
-dev = 'mps' if torch.backends.mps.is_available() else 'cpu'
+model_name = 'gpt2-medium'
 
-embedder = Embedder(
-    vocab_size=100, 
-    d_embed=8,
-    d_model=4,
-    device=dev
-)
+model = GPT2.from_pretrained(model_name)
+tokenizer = tiktoken.get_encoding('gpt2')
 
-a = torch.tensor([1., 2., 3., 5.], device=dev, dtype=torch.long).unsqueeze(0)
-a_emb = embedder(a)
+text = ''
+with open('title.txt', 'r') as file:
+    text = file.read()
 
-ffn = FeedForwardNetwork(
-    d_model=4, 
-    d_ff= 6, 
-    device=dev
-)
+centerPrint(text)
+divPrint()
+print(f'Parameter Count: {model.param_count()}')
+# os.system('figlet Menu')
 
-att = Attention(
-    d_model=4, 
-    num_head=2, 
-    device=dev
-)
-
-zer = torch.full(
-    size=(3, 3),
-    fill_value=float('inf')
-)
-tri = torch.triu(zer, diagonal=1).unsqueeze(0).expand(3, -1, -1)
-
-enc = TransformerEncoder(
-    d_model=4,
-    num_head=2, 
-    d_ff=6,
-    device=dev
-)
-
-dec = TransformerDecoder(
-    d_model=4,
-    num_head=2, 
-    d_ff=6,
-    device=dev
-)
-
-r = torch.rand(
-    size=(3, 3, 4)
-)
-
-def create_causal_mask(d_model: int, seq_len: int, batch_size: int):
-    zer = torch.full(
-        size=(seq_len, d_model),
-        fill_value=float('-inf')
-    )
-    tri = torch.triu(zer, diagonal=1).unsqueeze(0).unsqueeze(1)
-    return tri
-
-print(dec(a_emb).to(dev))
+while True: 
+    inp = input('Enter prompt: ')
+    if inp.lower().lstrip() != 'exit':
+        enc = torch.tensor(tokenizer.encode(inp), device='mps')
+        op = model.generate(enc, 80)
+        op = tokenizer.decode(op)
+        print(op)
+    else:
+        break

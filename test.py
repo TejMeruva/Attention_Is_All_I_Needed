@@ -1,4 +1,4 @@
-from GPT2 import GPT2Attention, GPTConfig, GPT2
+from GPT.model import GPT2Attention, GPTConfig, GPT2
 import torch
 from AKGPT import GPT
 from AKGPT import GPTConfig as gc

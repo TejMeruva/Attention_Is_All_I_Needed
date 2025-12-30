@@ -3,7 +3,9 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import math
-
+from GPT.config import *
+from transformers import GPT2LMHeadModel
+from tqdm import tqdm
 
 # learnt from AK's video that taking a top-down approach is smarted here.
 # so i will go from GPT -> Attn, Mlp
@@ -11,16 +13,6 @@ import math
 # I am using the same scheme as the original GPT-2 on Hugging Face. 
 # this means same variable names as well.
 
-@dataclass
-class GPTConfig:
-    vocab_size: int = 50257 # 50,000 BPE + 256 + 1 
-    d_embed: int = 768
-    block_size: int = 1024
-    dropout: float = 0.0
-    n_layer: float = 12
-    bias: bool = True
-    n_head: int = 12
-    device: str = 'cpu'
 class GPT2Attention(nn.Module):
     def __init__(self, config: GPTConfig):
         super().__init__()
@@ -121,7 +113,7 @@ class GPT2Block(nn.Module):
         
 
 class GPT2(nn.Module):
-    def __init__(self, config : GPTConfig):
+    def __init__(self, config = GPTConfig()): #default config for gpt2 mini (124M)
         super().__init__()
 
         self.config = config
@@ -168,65 +160,51 @@ class GPT2(nn.Module):
         return x
     
     @classmethod
-    def from_pretrained(cls, model_type, override_args=None):
-        assert model_type in {'gpt2', 'gpt2-medium', 'gpt2-large', 'gpt2-xl'}
-        override_args = override_args or {} # default to empty dict
-        # only dropout can be overridden see more notes below
-        assert all(k == 'dropout' for k in override_args)
-        from transformers import GPT2LMHeadModel
-        print("loading weights from pretrained gpt: %s" % model_type)
+    def from_pretrained(self, modelName: str):
+        model = GPT2()
+        match modelName:
+            case 'gpt2':
+                model = GPT2(gpt2Config)
+            case 'gpt2-medium':
+                model = GPT2(gpt2Medium)
+            case 'gpt2-large':
+                model = GPT2(gpt2Large)
+            case 'gpt2-xl':
+                model = GPT2(gpt2Xl)
+            case _:
+                raise Exception(f'requested pre-trained model {modelName} not available.')
+        
+        stateDict = model.state_dict()
+        modelHf = GPT2LMHeadModel.from_pretrained(modelName)
+        stateDictHf = modelHf.state_dict()
 
-        # n_layer, n_head and n_embd are determined from model_type
-        config_args = {
-            'gpt2':         dict(n_layer=12, n_head=12, n_embd=768),  # 124M params
-            'gpt2-medium':  dict(n_layer=24, n_head=16, n_embd=1024), # 350M params
-            'gpt2-large':   dict(n_layer=36, n_head=20, n_embd=1280), # 774M params
-            'gpt2-xl':      dict(n_layer=48, n_head=25, n_embd=1600), # 1558M params
-        }[model_type]
-        print("forcing vocab_size=50257, block_size=1024, bias=True")
-        config_args['vocab_size'] = 50257 # always 50257 for GPT model checkpoints
-        config_args['block_size'] = 1024 # always 1024 for GPT model checkpoints
-        config_args['bias'] = True # always True for GPT model checkpoints
-        # we can override the dropout rate, if desired
-        if 'dropout' in override_args:
-            print(f"overriding dropout rate to {override_args['dropout']}")
-            config_args['dropout'] = override_args['dropout']
-        # create a from-scratch initialized minGPT model
-        # config = GPTConfig(**config_args)
-        model = GPT2(GPTConfig())
-        sd = model.state_dict()
-        sd_keys = sd.keys()
-        sd_keys = [k for k in sd_keys if not k.endswith('.attn.bias')] # discard this mask / buffer, not a param
-
-        # init a huggingface/transformers model
-        model_hf = GPT2LMHeadModel.from_pretrained(model_type)
-        sd_hf = model_hf.state_dict()
-
-        # copy while ensuring all of the parameters are aligned and match in names and shapes
-        sd_keys_hf = sd_hf.keys()
-        sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.masked_bias')] # ignore these, just a buffer
-        sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.bias')] # same, just the mask (buffer)
         transposed = ['attn.c_attn.weight', 'attn.c_proj.weight', 'mlp.c_fc.weight', 'mlp.c_proj.weight']
-        # basically the openai checkpoints use a "Conv1D" module, but we only want to use a vanilla Linear
-        # this means that we have to transpose these weights when we import them
-        assert len(sd_keys_hf) == len(sd_keys), f"mismatched keys: {len(sd_keys_hf)} != {len(sd_keys)}"
-        for k in sd_keys_hf:
-            if any(k.endswith(w) for w in transposed):
-                # special treatment for the Conv1D weights we need to transpose
-                assert sd_hf[k].shape[::-1] == sd[k].shape
+
+        for key in stateDictHf.keys():
+            if True in [key.endswith(x) for x in transposed]:
                 with torch.no_grad():
-                    sd[k].copy_(sd_hf[k].t())
+                    assert stateDict[key].shape == stateDictHf[key].t().shape, f'shape of {key} : {stateDict[key].shape} is not equal to the required shape {stateDictHf[key].t().shape}'
+                    stateDict[key].copy_(stateDictHf[key].t())
             else:
-                # vanilla copy over the other parameters
-                assert sd_hf[k].shape == sd[k].shape
+                assert stateDict[key].shape == stateDictHf[key].shape, f'shape of {key} : {stateDict[key].shape} is not equal to the required shape {stateDictHf[key].shape}'
                 with torch.no_grad():
-                    sd[k].copy_(sd_hf[k])
+                    stateDict[key].copy_(stateDictHf[key])
 
         return model
+
+    def param_count(self):
+        s = 0
+        for param in self.parameters():
+            s += param.numel()
+        s -= self.transformer.wpe.weight.numel()
+        return s
     
     @torch.no_grad()
-    def generate(self, idx: list, max_tokens: int = 30, k: int = 50):
-        for _ in range(max_tokens):
+    def generate(self, idx: list, max_tokens: int = 30, k: int = 50, progress_bar = False):
+        wrapper = lambda x: x
+        if progress_bar:
+            wrapper = tqdm
+        for _ in wrapper(range(max_tokens)):
             logits = self(idx.unsqueeze(0))
             probs = F.softmax(logits, dim=-1).squeeze()
             # print(probs)
