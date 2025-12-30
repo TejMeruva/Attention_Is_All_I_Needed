@@ -1,7 +1,7 @@
 from GPT.model import GPT2Attention, GPTConfig, GPT2
 import torch
-from AKGPT import GPT
-from AKGPT import GPTConfig as gc
+from _dev.AKGPT import GPT
+from _dev.AKGPT import GPTConfig as gc
 
 custConfig = GPTConfig(n_head=2, d_embed=4)
 defConfig = GPTConfig(dropout=0)

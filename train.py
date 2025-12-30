@@ -6,9 +6,10 @@ from GPT.config import gpt2Config
 import matplotlib.pyplot as plt
 import joblib
 
-data = TextFile('Trainer/data.txt', 100, 32, device='mps')
+data = TextFile('Trainer/data.txt', 4, 100, device='mps', max_tokens=2000)
 
-model = joblib.load('GPT2_124M_01.pkl')
+# model = joblib.load('GPT2_124M_01.pkl')
+model = GPT2(gpt2Config)
 print(f'using device {model.config.device}')
 optimizer = torch.optim.AdamW(
     params=model.parameters(),
@@ -30,7 +31,7 @@ for ind in tqdm(range(epochs)):
     if (ind + 1) % 100 == 0:
         print(f'epoch {ind + 1}: loss is {loss}')
 
-joblib.dump(model, 'GPT2_124M_01.pkl')
+joblib.dump(model, 'GPT2_124M_overfit.pkl')
 
     
 

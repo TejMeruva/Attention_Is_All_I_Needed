@@ -13,7 +13,8 @@ tokenizer = tiktoken.get_encoding('gpt2')
 models = [GPT2.from_pretrained('gpt2'), 
           GPT2.from_pretrained('gpt2-medium'),
           joblib.load('GPT2_124M_01.pkl'),
-          GPT2()
+          GPT2(),
+          joblib.load('GPT2_124M_overfit.pkl')
           ]
 
 text = ''
@@ -39,7 +40,8 @@ while True:
             options += '0: GPT2 (HuggingFace)\n'
             options += '1: GPT2-medium (HuggingFace)\n'
             options += '2: GPT2 (self-trained)\n'
-            options += '3: GPT2 (untrained)'
+            options += '3: GPT2 (untrained)\n'
+            options += '4: GPT2 (overfitted)\n'
             print(options)
             ind = int(input('Model Choice: '))
             model = models[ind]
