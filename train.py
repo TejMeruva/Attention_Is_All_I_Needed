@@ -43,41 +43,81 @@ def get_lr(it):
         return min_lr + coeff * (max_lr - min_lr)
     return min_lr
 
-optimizer = torch.optim.AdamW(
-    params=model.parameters(),
-    lr=3e-4,
-    betas=(0.9, 0.95),
-    eps=1e-8
-)
+def configure_optimizer(model: torch.nn.Module, weight_decay):
+    param_dict = {pn: p for pn, p in model.named_parameters()}
+    param_dict = {pn: p for pn, p in param_dict.items() if p.requires_grad}
+    
+    decay = [p for n, p in param_dict.items() if p.dim() >=2]
+    non_decay = [p for n, p in param_dict.items() if p.dim() < 2]
+
+    optim_groups = [
+        {'params':decay, 'weight_decay':weight_decay},
+        {'params':non_decay, 'weight_decay':0.0}
+    ]
+
+    using_fused = model.config.device == 'mps'
+
+    optimizer = torch.optim.AdamW(
+        optim_groups, 
+        lr=6e-4,
+        betas=(0.9, 0.95),
+        eps=1e-8,
+        fused= using_fused
+        )
+    num_decay = sum([p.numel() for p in decay])
+    num_non_decay = sum([p.numel() for p in non_decay])
+    print(f'{num_decay} parameters using weight decay')
+    print(f'{num_non_decay} parameters NOT using weight decay')
+    print(f'AdamW fused is being used: {using_fused}')
+    return optimizer
+
+optimizer = configure_optimizer(model, 0.1)
 
 # print(data.tokens.size(0) // (data.B * data.T))
 # import sys; sys.exit(0)
 losses = []
-steps = len(data.tokens) // (data.B * data.T)
-steps = 20
-print(f'total num of epochs: {steps}')
+
+# steps = 20
+
 
 prog_bar = False
 wrapper = lambda x: x
+
+batch_tokens = 2**19 
+micro_batch_tokens = (data.B * data.T)
+gradient_accumulation_steps = batch_tokens //micro_batch_tokens
+steps = 1
+
+print(f'total tokens in data: {len(data.tokens)}')
+print(f'batches needed: {len(data.tokens) / batch_tokens}')
+print(f'tokens per batch: {batch_tokens}')
+print(f'tokens per micro-batch: {micro_batch_tokens}')
+print(f'gradient acculumation steps: {gradient_accumulation_steps}')
+print(f'total batches: {steps}')
+
 if prog_bar: wrapper = tqdm
 for step in wrapper(range(steps)):
     model.train()    
     t0 = time.time()
-    x, y = data.next_batch()
     optimizer.zero_grad()
-    with torch.autocast(device_type=device, dtype=torch.bfloat16):
-        logits, loss = model(x, y)
-    losses.append(loss.item())
-    loss.backward()
+    loss_accum = 0.0
+    print(f'batch {step+1}')
+    for sub_step in tqdm(range(gradient_accumulation_steps)):
+        x, y = data.next_batch()
+        with torch.autocast(device_type=device, dtype=torch.bfloat16):
+            logits, loss = model(x, y)
+        loss = loss/gradient_accumulation_steps
+        loss_accum += loss.detach()
+        loss.backward()
     norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
     lr = get_lr(step)
+    losses.append(loss_accum)
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
-    optimizer.step()
     torch.mps.synchronize()
     t1 = time.time()
     tok_rate = (data.B * data.T) / (t1 - t0)
-    print(f'epoch ({step}/{steps})\ttime for epoch: {t1 - t0}\ttok/sec: {tok_rate}\tlr: {lr}\tloss: {loss.item()}\tnorm: {norm}')
+    print(f'epoch ({step}/{steps})\ttime for epoch: {t1 - t0}\ttok/sec: {tok_rate}\tlr: {lr}\tloss: {loss_accum}\tnorm: {norm}')
     
     
 

@@ -109,3 +109,6 @@
 - got 1000 tok/sec without using torch.compile
 - Ak was getting 173k tok/sec.
 - almost 170x my speed.
+- got the lowest loss of 1.9 and tok rate of 1100 using gradient accululation.
+- learnt and implemented weight decay. It is necessary to prevent the over dependance on one weight.
+- implemented correct gradient accumulation acc to AK.

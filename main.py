@@ -12,7 +12,7 @@ tokenizer = tiktoken.get_encoding('gpt2')
 
 models = [GPT2.from_pretrained('gpt2'), 
           GPT2.from_pretrained('gpt2-medium'),
-          joblib.load('GPT2_124M_01.pkl'),
+          joblib.load('GPT2_124M_02.pkl'),
           GPT2(),
           joblib.load('GPT2_124M_overfit.pkl')
           ]
