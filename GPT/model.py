@@ -47,7 +47,7 @@ class GPT2Attention(nn.Module):
             torch.nn.init.normal_(module.weight, mean=0, std=0.02) # according to GPT2 paper.
 
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor, flash_attention=True):
         b, l, d = x.size()
 
         # splitting into q, k, v
@@ -58,16 +58,15 @@ class GPT2Attention(nn.Module):
         k = k.view(b, l, self.config.n_head, d // self.config.n_head).transpose(1, 2)
         v = v.view(b, l, self.config.n_head, d // self.config.n_head).transpose(1, 2)
 
-        att = (q @ k.transpose(-1, -2)) * (1/math.sqrt(k.size(-1)))
-        # print(att.size())
-        # causal_mask = self.causal_mask(a, b, c)
-        # print(att.shape)
-        # att += causal_mask
-        att = att.masked_fill(self.bias[:,:,:l,:l] == 0, float('-inf'))
-        att = F.softmax(att, dim=-1)
-        
-        att = self.attn_dropout(att)
-        att = att @ v
+        if flash_attention:
+            att = F.scaled_dot_product_attention(q, k, v, is_causal=True)
+            # print('hey')
+        else:
+            att = (q @ k.transpose(-1, -2)) * (1/math.sqrt(k.size(-1)))
+            att = att.masked_fill(self.bias[:,:,:l,:l] == 0, float('-inf'))
+            att = F.softmax(att, dim=-1)
+            # att = self.attn_dropout(att)
+            att = att @ v
 
         att = att.transpose(1, 2).contiguous().view(b, l, d)
         att = self.resid_dropout(self.c_proj(att))
@@ -108,7 +107,7 @@ class GPT2Block(nn.Module):
 
     def forward(self, x: torch.Tensor):
         B, T, C = x.size()
-        x = x + self.attn(self.ln_1(x))
+        x = x + self.attn(self.ln_1(x), flash_attention=self.config.flash_attention)
         x = x + self.mlp(self.ln_2(x))
         return x
         

@@ -101,3 +101,11 @@
 - i got insanely higher tokens per second (+300) by reducing, number of tokens in each batch. (1024 -> 256)
 - found sweet spot at 512 tokens in each idx with 8 idx's.
 - using torch.compile
+- removed .contiguous() from dataset.py. got the time down to ~3.5s per iteration and 1130 tok/sec.
+- got 1050 tok/sec even when using 1024 n_embed when using flash attention (crazy) (4 idx per batch, 1024 tokens per idx)
+- got 1060 tok/sec using 50304 vocab_size
+- 330 tok/sec to 830 tok/sec (2.5x faster overall)
+- used the hyper parameters used by GPT3.
+- got 1000 tok/sec without using torch.compile
+- Ak was getting 173k tok/sec.
+- almost 170x my speed.

@@ -5,3 +5,4 @@ seaborn
 tiktoken
 ipykernel
 transformers
+seabron

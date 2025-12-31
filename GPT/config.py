@@ -11,6 +11,7 @@ class GPTConfig:
     bias: bool = True
     n_head: int = 12
     device: str = 'cpu'
+    flash_attention: bool = True
 
 gpt2Config = GPTConfig(
     device = 'mps' if torch.backends.mps.is_available() else 'cpu'
