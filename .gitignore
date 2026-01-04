@@ -3,3 +3,4 @@ venv/
 __pycache__/
 GPT/__pycache__/
 *.pkl
+_dev/

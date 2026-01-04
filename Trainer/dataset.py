@@ -7,11 +7,15 @@ class TextFile:
                  file_path: str,
                  batch_size: int, 
                  token_count: int,
+                 ddp_rank: int, 
+                 ddp_world_size: int,
                  device: str = 'cpu',
                  max_tokens = None
                  ):
         self.B = batch_size
         self.T = token_count
+        self.ddp_rank = ddp_rank
+        self.ddp_world_size = ddp_world_size
 
         self.tokenizer = tiktoken.get_encoding('gpt2')
 
@@ -25,18 +29,17 @@ class TextFile:
         if max_tokens is not None:
             tokens = tokens[:max_tokens]
         self.tokens = tokens
-        self.current_pos = 0
+        self.current_pos = self.ddp_rank * self.B * self.T
 
     def next_batch(self):
-        if (self.current_pos + self.B * self.T > len(self.tokens)): self.current_pos = 0
         batch_tokens =  self.tokens[self.current_pos: self.current_pos + self.B * self.T + 1]
-        if len(batch_tokens) % self.B != 0: self.current_pos = 0
-        x = batch_tokens[:-1].view(self.B, -1)
-        y = batch_tokens[1:].view(self.B, -1) 
+        x = batch_tokens[:-1].view(self.B, (len(batch_tokens) - 1) // self.B)
+        y = batch_tokens[1:].view(self.B, (len(batch_tokens) - 1) // self.B) 
 
-        if self.current_pos + (self.B * self.T) < self.tokens.size(0):
-            self.current_pos += (self.B * self.T)
-        else:
-            self.current_pos = 0
+        step = self.B * self.T * self.ddp_world_size
+        self.current_pos += step
+
+        if self.current_pos + step > self.tokens.size(0) :
+            self.current_pos = self.B * self.T * self.ddp_rank
         return x, y
             
