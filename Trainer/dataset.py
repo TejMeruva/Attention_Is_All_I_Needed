@@ -25,6 +25,7 @@ class NumPyFolder:
         self.shards = sorted(os.listdir(file_path))
         self.current_shard = -1
         self.current_pos = self.B * self.T * self.ddp_rank
+        assert len(self.shards) > 0, f'NumpyFolder Folder Empty'
         self.load_next_shard()
 
     def load_next_shard(self):

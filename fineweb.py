@@ -23,7 +23,7 @@ def tokenize(doc):
 
 def main():
     # constants
-    shard_size = 1310720  # micro_batch * 8 * 10
+    shard_size = 13107200  # micro_batch * 8 * 100
     n_proc = os.cpu_count()
     save_folder = 'fineweb_data'
 
