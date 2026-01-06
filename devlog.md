@@ -118,4 +118,8 @@ decided to pay for Lambda.ai
 
 **04 Jan 2026** 
 - implemnted DAta Distributed Parallel code (DDP)
-- 
+
+**06 Jan 2026**
+- downloaded the FineWeb-edu 10B token dataset. 
+- DataLoader.
+- wrote fineweb.py to get the data and tokenize it.

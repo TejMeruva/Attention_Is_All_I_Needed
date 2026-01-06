@@ -4,3 +4,4 @@ __pycache__/
 GPT/__pycache__/
 *.pkl
 _dev/
+fineweb_data/

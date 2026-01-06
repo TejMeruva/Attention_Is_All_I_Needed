@@ -1,16 +1,13 @@
-from Trainer.dataset import TextFile
+from Trainer.dataset import NumPyFolder
+import numpy as np
 
-
-file = TextFile(
-                file_path='Trainer/data.txt', 
-                batch_size=16,
-                token_count=1024, 
-                ddp_world_size= 4,
-                ddp_rank=0, device='mps'
-                )
-while True:
-    try: 
-        x = file.next_batch()
-        print(file.current_pos)
-    except:
-        break
+data = NumPyFolder(
+    file_path='fineweb_data',
+    batch_size=16,
+    token_count=1024,
+    ddp_rank=0,
+    ddp_world_size=1,
+    device='mps'
+)
+for _ in range(1000):
+    print(*map(lambda x: x.shape, data.next_batch()))
